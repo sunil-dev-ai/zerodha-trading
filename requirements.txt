@@ -1,0 +1,9 @@
+kiteconnect 
+pydantic 
+pandas 
+plotly 
+dash 
+pytest 
+yfinance 
+backtrader 
+mlfinlab 
