@@ -3,18 +3,19 @@ from kiteconnect import KiteConnect
 from config.settings import API_KEY, SECRET_KEY
 from core.profile_viewer import show_profile
 
-# Initialize Kite client
+# Initialize Kite client once
 kite = KiteConnect(api_key=API_KEY)
 
 
 def generate_session(request_token: str):
     """
-    Generate a session using request_token and secret key.
+    Generate a new session using request_token and secret key.
     Returns the access_token for authenticated API calls.
     """
     data = kite.generate_session(request_token, api_secret=SECRET_KEY)
-    kite.set_access_token(data["access_token"])
-    return data["access_token"]
+    access_token = data["access_token"]
+    kite.set_access_token(access_token)
+    return access_token
 
 
 def get_profile():
@@ -55,6 +56,26 @@ def save_access_token_to_env(access_token: str, env_file=".env"):
         f"\n💾 Access token saved to {env_file} as ACCESS_TOKEN={access_token}")
 
 
+def set_access_token(env_file=".env"):
+    """
+    Load ACCESS_TOKEN from .env and set it in Kite client.
+    """
+    access_token = None
+    if os.path.exists(env_file):
+        with open(env_file, "r") as f:
+            for line in f:
+                if line.startswith("ACCESS_TOKEN="):
+                    access_token = line.strip().split("=")[1]
+                    break
+
+    if not access_token:
+        raise Exception(
+            "ACCESS_TOKEN not found in .env. Please authenticate first.")
+
+    kite.set_access_token(access_token)
+    return access_token
+
+
 if __name__ == "__main__":
     # Step 1: Print login URL
     print("👉 Please log in using this URL:")
@@ -74,7 +95,6 @@ if __name__ == "__main__":
 
         # Step 5: Fetch and show profile
         profile = get_profile()
-        # print("Profile:", profile)
         show_profile(profile)
 
     except Exception as e:
