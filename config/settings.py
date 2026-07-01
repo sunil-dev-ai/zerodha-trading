@@ -7,8 +7,10 @@ load_dotenv()
 # Access secrets securely
 API_KEY = os.getenv("API_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
 # Optional: print to verify (remove in production)
 if __name__ == "__main__":
     print("API_KEY:", API_KEY)
     print("SECRET_KEY:", SECRET_KEY)
+    print("ACCESS_TOKEN:", ACCESS_TOKEN)
