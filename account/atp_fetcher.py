@@ -1,31 +1,33 @@
-import requests
+import yfinance as yf
 from account.symbol_manager import get_trade_config
 
 
 def get_atp(symbol: str, exchange: str = "NSE"):
     """
-    Fetch Average Traded Price (ATP) using NSE India API.
-    Falls back to manual input if market is closed or API fails.
+    Fetch Average Traded Price (ATP) using yfinance intraday data.
+    Approximates ATP as VWAP (Volume Weighted Average Price).
     """
-    url = f"https://www.nseindia.com/api/quote-equity?symbol={symbol}"
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json",
-        "Referer": "https://www.nseindia.com/"
-    }
+    suffix = ".NS" if exchange.upper() == "NSE" else ".BO"
     try:
-        session = requests.Session()
-        response = session.get(url, headers=headers, timeout=5)
-        data = response.json()
-        # NSE API provides ATP in priceInfo.averagePrice
-        return data["priceInfo"]["averagePrice"]
+        stock = yf.Ticker(symbol + suffix)
+        # Fetch intraday data (1-minute interval for today)
+        data = stock.history(period="1d", interval="1m")
+        if data.empty:
+            raise ValueError("No intraday data returned for symbol")
+
+        # Calculate VWAP = sum(price * volume) / sum(volume)
+        vwap = (data["Close"] * data["Volume"]).sum() / data["Volume"].sum()
+        return float(vwap)
     except Exception as e:
         print(f"❌ API call failed: {str(e)}")
-        return float(input(f"Enter current ATP for {symbol}: ").strip())
+        return None
 
 
 if __name__ == "__main__":
     trade_config = get_trade_config()
     symbol = trade_config["SYMBOL"]
     atp = get_atp(symbol)
-    print(f"✅ Average Traded Price (ATP) of {symbol}: {atp}")
+    if atp:
+        print(f"✅ Average Traded Price (ATP) of {symbol}: {atp:.2f}")
+    else:
+        print(f"❌ Could not fetch ATP for {symbol}")
