@@ -9,8 +9,11 @@ API_KEY = os.getenv("API_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
-# Optional: print to verify (remove in production)
+# File path for unified trading config storage
+TRADE_CONFIG_FILE = os.path.join("config", "trade_config.txt")
+
 if __name__ == "__main__":
     print("API_KEY:", API_KEY)
     print("SECRET_KEY:", SECRET_KEY)
     print("ACCESS_TOKEN:", ACCESS_TOKEN)
+    print("TRADE_CONFIG_FILE:", TRADE_CONFIG_FILE)
