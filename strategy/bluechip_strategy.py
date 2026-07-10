@@ -1,149 +1,498 @@
 # strategy/bluechip_strategy.py
 
 import os
-from account.ltp_fetcher import get_ltp
+
 from account.quantity_calculator import calculate_quantity
 from account.balance_checker import get_balance
-from account.atp_fetcher import get_atp   # fetch ATP
+from account.atp_fetcher import get_atp
 
-CONFIG_FILE = os.path.join("config", "trade_config.txt")
 
+# =====================================================
+# CONFIG PATH
+# =====================================================
+
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
+)
+
+CONFIG_FILE = os.path.join(
+    BASE_DIR,
+    "config",
+    "trade_config.txt"
+)
+
+
+
+# =====================================================
+# LOAD CONFIG
+# =====================================================
 
 def load_config(config_file=CONFIG_FILE):
-    """Load key-value pairs from trade_config.txt into a dictionary."""
+
     config = {}
+
     try:
-        with open(config_file, "r") as f:
-            for line in f:
+
+        with open(
+            config_file,
+            "r"
+        ) as file:
+
+            for line in file:
+
                 line = line.strip()
-                if not line or "=" not in line or line.startswith("#"):
+
+                if (
+                    not line
+                    or "=" not in line
+                    or line.startswith("#")
+                ):
                     continue
-                key, value = line.split("=", 1)
+
+
+                key, value = line.split(
+                    "=",
+                    1
+                )
+
                 config[key.strip()] = value.strip()
+
+
     except FileNotFoundError:
-        print("❌ trade_config.txt not found in config folder.")
+
+        print(
+            "❌ trade_config.txt not found"
+        )
+
+
     return config
 
 
-def load_section(section_name: str, config_file=CONFIG_FILE):
-    """Load a section (like --BLUECHIP_STOCKS--) from trade_config.txt."""
+
+# =====================================================
+# LOAD STOCK SECTION
+# =====================================================
+
+def load_section(
+        section_name,
+        config_file=CONFIG_FILE
+):
+
     stocks = []
+
     try:
-        with open(config_file, "r") as f:
-            lines = f.readlines()
-            capture = False
-            for line in lines:
-                line = line.strip()
-                if line == section_name:
-                    capture = True
-                    continue
-                if capture:
-                    if line.startswith("--") or not line:
-                        break
-                    if "," in line:
-                        stocks.extend([s.strip().upper()
-                                      for s in line.split(",")])
-                    else:
-                        stocks.append(line.upper())
+
+        with open(
+            config_file,
+            "r"
+        ) as file:
+
+            lines = file.readlines()
+
+
+        capture = False
+
+
+        for line in lines:
+
+            line = line.strip()
+
+
+            if line == section_name:
+
+                capture = True
+                continue
+
+
+
+            if capture:
+
+                if (
+                    line.startswith("--")
+                    or not line
+                ):
+
+                    break
+
+
+                if "," in line:
+
+                    stocks.extend(
+                        [
+                            x.strip().upper()
+                            for x in line.split(",")
+                        ]
+                    )
+
+                else:
+
+                    stocks.append(
+                        line.upper()
+                    )
+
+
     except FileNotFoundError:
-        print("❌ trade_config.txt not found in config folder.")
+
+        print(
+            "❌ trade_config.txt missing"
+        )
+
+
     return stocks
 
 
+
+
+# =====================================================
+# BLUECHIP SCANNER
+# =====================================================
+
 def run_bluechip_strategy():
-    """Scan blue-chip stocks and return best candidate details as a dictionary."""
-    trade_config = load_config()
-    expected_profit_str = trade_config.get("EXPECTED_PROFIT", "").strip()
 
-    if not expected_profit_str:
-        expected_profit_str = input("Enter expected profit amount: ").strip()
+    """
+    Scan all bluechip stocks.
 
-    try:
-        expected_profit = float(expected_profit_str)
-    except ValueError:
-        print("❌ Invalid profit value entered. Defaulting to 100.")
-        expected_profit = 100.0
+    Returns:
+
+    {
+        selected_stocks: [],
+        best_candidate: {}
+    }
+
+    """
+
 
     balance = get_balance()
+
     available_margin = balance["net"]
 
-    bluechip_stocks = load_section("--BLUECHIP_STOCKS--")
-    if not bluechip_stocks:
-        print("❌ No BLUECHIP_STOCKS defined in trade_config.txt")
+
+
+    stocks = load_section(
+        "--BLUECHIP_STOCKS--"
+    )
+
+
+    if not stocks:
+
+        print(
+            "❌ No BLUECHIP_STOCKS found"
+        )
+
         return None
 
-    print("✅ Running Bluechip Strategy")
-    print(f"Available Margin: ₹{available_margin:.2f}")
-    print(f"Target Profit: ₹{expected_profit:.2f}\n")
 
-    best_candidate = None
-    crossed_atp_candidates = []
 
-    for symbol in bluechip_stocks:
-        ltp = get_ltp(symbol)
+    print(
+        "\n✅ Running Bluechip Strategy"
+    )
+
+    print(
+        f"Available Margin : ₹{available_margin:.2f}"
+    )
+
+    print(
+        f"Scanning Stocks  : {len(stocks)}\n"
+    )
+
+
+
+    crossed_candidates = []
+
+    fallback_candidates = []
+
+
+
+    for symbol in stocks:
+
+
+        qty, ltp = calculate_quantity(
+            symbol,
+            available_margin
+        )
+
+
+
         if not ltp:
-            print(f"❌ Could not fetch LTP for {symbol}")
+
+            print(
+                f"❌ LTP unavailable {symbol}"
+            )
+
+            continue
+        
+        if qty < 1:
+
+            print(
+                f"❌ Insufficient margin for {symbol} | Qty: {qty}"
+            )
+
             continue
 
-        qty, ltp = calculate_quantity(symbol, available_margin)
-        estimated_profit = qty * 1.0  # assume ₹1 move
-        target_price = ltp + (expected_profit / qty) if qty > 0 else None
 
-        atp = get_atp(symbol)
-        crossed_atp = None
+
+        atp = get_atp(
+            symbol
+        )
+
+
+
+        print(
+            "-" * 50
+        )
+
+        print(
+            f"Symbol   : {symbol}"
+        )
+
+        print(
+            f"LTP      : ₹{ltp:.2f}"
+        )
+
+        print(
+            f"Quantity : {qty}"
+        )
+
+
+
         if atp:
-            crossed_atp = ltp > atp
-            status = "Crossed ATP (Bullish)" if crossed_atp else "Below ATP (Bearish)"
-            atp_display = f"{atp:.2f}"
-        else:
-            status = "ATP not available"
-            atp_display = "N/A"
 
-        print(f"Symbol: {symbol}")
-        print(f"  LTP: ₹{ltp:.2f}")
-        print(f"  Quantity (after buffer): {qty}")
-        if target_price:
+
+            strength = (
+                (ltp - atp)
+                /
+                atp
+            ) * 100
+
+
+
+            crossed = (
+                ltp > atp
+            )
+
+
+
             print(
-                f"  Target Price for ₹{expected_profit} profit: ₹{target_price:.2f}")
-        print(f"  ATP: {atp_display} → {status}")
-        print()
+                f"ATP      : ₹{atp:.2f}"
+            )
 
-        if crossed_atp:
-            crossed_atp_candidates.append({
+            print(
+                f"Strength : {strength:.2f}%"
+            )
+
+
+            print(
+                "Status   : "
+                +
+                (
+                    "ATP BREAKOUT"
+                    if crossed
+                    else
+                    "Below ATP"
+                )
+            )
+
+
+
+            candidate = {
+
                 "symbol": symbol,
-                "ltp": round(ltp, 2),
+
+                "ltp": round(
+                    ltp,
+                    2
+                ),
+
                 "quantity": qty,
-                "target_price": round(target_price, 2) if target_price else None,
-                "atp": atp_display,
-                "estimated_profit": estimated_profit
-            })
-        elif not best_candidate or estimated_profit > best_candidate["estimated_profit"]:
-            best_candidate = {
-                "symbol": symbol,
-                "ltp": round(ltp, 2),
-                "quantity": qty,
-                "target_price": round(target_price, 2) if target_price else None,
-                "atp": atp_display,
-                "estimated_profit": estimated_profit
+
+                "atp": round(
+                    atp,
+                    2
+                ),
+
+                "strength": round(
+                    strength,
+                    2
+                )
+
             }
 
-    # Final candidate decision
-    if crossed_atp_candidates:
-        best_candidate = max(crossed_atp_candidates,
-                             key=lambda x: x["estimated_profit"])
-        print(f"\n🎯 Best Candidate (Crossed ATP): {best_candidate['symbol']}")
-    elif best_candidate:
-        print(f"\n🎯 Best Candidate: {best_candidate['symbol']}")
+
+
+            if crossed:
+
+                crossed_candidates.append(
+                    candidate
+                )
+
+            else:
+
+                fallback_candidates.append(
+                    candidate
+                )
+
+
+
+        else:
+
+
+            print(
+                "ATP : N/A"
+            )
+
+
+            fallback_candidates.append(
+
+                {
+
+                    "symbol": symbol,
+
+                    "ltp": round(
+                        ltp,
+                        2
+                    ),
+
+                    "quantity": qty,
+
+                    "atp": None,
+
+                    "strength": 0
+
+                }
+
+            )
+
+
+
+
+    # =================================================
+    # FINAL SELECTION
+    # =================================================
+
+
+    if crossed_candidates:
+
+
+        crossed_candidates.sort(
+
+            key=lambda x:
+                x["strength"],
+
+            reverse=True
+
+        )
+
+
+        best_candidate = next(
+            (
+                x for x in crossed_candidates
+                if x["quantity"] >= 1
+            ),
+            None
+        )
+
+
+        if not best_candidate:
+            print(
+                "❌ No ATP breakout candidate with valid quantity"
+            )
+            return None
+
+        print(
+            "\n🎯 BEST ATP BREAKOUT"
+        )
+
+        print(
+            best_candidate
+        )
+
+        return {
+
+            "selected_stocks":
+                crossed_candidates,
+
+            "best_candidate":
+                best_candidate
+
+        }
+
+
+
+    elif fallback_candidates:
+
+        best_candidate = next(
+            (
+                x for x in fallback_candidates
+                if x["quantity"] >= 1
+            ),
+            None
+        )
+
+
+        if not best_candidate:
+            print(
+                "❌ No fallback candidate with valid quantity"
+            )
+            return None
+
+
+        print(
+            "\n⚠ No ATP breakout found"
+        )
+
+        print(
+            "Fallback candidate:"
+        )
+
+        print(
+            best_candidate
+        )
+
+
+
+        return {
+
+            "selected_stocks":
+                fallback_candidates,
+
+            "best_candidate":
+                best_candidate
+
+        }
+
+
+
     else:
-        print("⚠️ No stock meets the profit target today.")
+
+
+        print(
+            "❌ No candidates found"
+        )
+
         return None
 
-    # Return dictionary of details
-    return best_candidate
 
+
+
+
+# =====================================================
+# TEST
+# =====================================================
 
 if __name__ == "__main__":
-    candidate = run_bluechip_strategy()
-    if candidate:
-        print("\n➡️ Final Selected Candidate Details:")
-        print(candidate)
+
+
+    result = run_bluechip_strategy()
+
+
+    if result:
+
+        print(
+            "\nFINAL RESULT"
+        )
+
+        print(
+            result
+        )
