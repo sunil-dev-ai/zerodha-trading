@@ -8,3 +8,4 @@ yfinance
 backtrader
 pandas
 openpyxl
+python-dotenv

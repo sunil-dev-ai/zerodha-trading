@@ -17,7 +17,7 @@ class InstrumentCache:
         if cls._loaded:
             return
 
-        print("Loading instrument master...")
+        print("\n⏳ Loading instrument master...")
 
         instruments = kite.instruments(exchange)
 
@@ -28,7 +28,7 @@ class InstrumentCache:
 
         cls._loaded = True
 
-        print(f"Loaded {len(cls._instrument_map)} instruments.")
+        print(f"\n✅ Loaded {len(cls._instrument_map)} instruments.")
 
     @classmethod
     def get(cls, symbol):

@@ -14,6 +14,7 @@ from account.macd_fetcher import get_macd
 from core.place_order import place_order, kite
 from core.order_status import get_order_status
 from core.cancel_order import cancel_order
+from core.market_status import get_market_status
 
 from strategy.bluechip_strategy import run_bluechip_strategy
 
@@ -301,8 +302,9 @@ def track_position(symbol, qty):
 
 
 
+        status = get_market_status()
 
-        if trend["signal"] == "SELL":
+        if trend["signal"] == "SELL" or status["Remaining Time"] <= 5:
 
 
             print_header(
@@ -524,7 +526,20 @@ def run_strategy():
 
     while True:
 
+        # ==========================================
+        # MARKET CLOSE PROTECTION
+        # ==========================================
 
+        status = get_market_status()
+
+
+        if status["Remaining Time"] <= 5:
+
+            print(
+                "\n⏰ Market closing soon. No new trades allowed."
+            )
+
+            break
 
         print_header(
             "SCANNING MARKET"
