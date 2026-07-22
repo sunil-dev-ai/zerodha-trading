@@ -1,3 +1,5 @@
+import time
+
 from strategy.strategy_v1 import run_strategy
 
 from core.market_status import get_market_status
@@ -6,6 +8,7 @@ from account.instrument_cache import InstrumentCache
 from account.virtual_contract_note import get_virtual_contract_note
 
 from utils.update_bluechip_stocks import main as update_bluechip_stocks
+
 
 def print_daily_summary():
 
@@ -48,50 +51,51 @@ def main():
 ============================================================
 """)
 
-
-    status = get_market_status()
-
-
     print("📊 Loading Instruments...")
     InstrumentCache.load()
+    print("✅ Instruments Loaded")
 
-    if not status["live"]:
-        print("\n❌ Market is currently CLOSED.") 
-        return
-    
-    print(f"✅ Market is LIVE")
-    print(f"⏳ Remaining Time: {status['remaining_minutes']} minutes")
+    print("\n⏳ Checking Market Status...")
 
-    print("\n🔄 Updating Bluechip Stock List...")
+    while True:
+
+        status = get_market_status()
+
+        if status["live"]:
+            print("\n✅ Market is LIVE")
+            print(
+                f"⏳ Remaining Trading Time : {status['remaining_minutes']} minutes"
+            )
+            break
+
+        print(
+            f"\r❌ Market is CLOSED | Opens in {status['remaining_minutes']} minutes...",
+            end="",
+            flush=True
+        )
+
+        time.sleep(60)
+
+    print("\n\n🔄 Updating Bluechip Stock List...")
 
     try:
 
         update_bluechip_stocks()
 
-        print(
-            "✅ Bluechip stock list updated"
-        )
+        print("✅ Bluechip stock list updated")
 
     except Exception as e:
 
-        print(
-            "❌ Bluechip update failed"
-        )
-
+        print("❌ Bluechip update failed")
         print(str(e))
-
         return
 
-
-
     print("\n🚀 Starting Trading Strategy...")
-
 
     try:
 
         run_strategy()
         print_daily_summary()
-
 
     except KeyboardInterrupt:
 
@@ -100,7 +104,6 @@ def main():
 🛑 Trading Bot Stopped Manually
 ============================================================
 """)
-
 
     except Exception as e:
 
