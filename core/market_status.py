@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 IST = ZoneInfo("Asia/Kolkata")
 
-MARKET_OPEN = time(9, 15)
+MARKET_OPEN = time(9, 30)
 MARKET_CLOSE = time(15, 30)
 
 

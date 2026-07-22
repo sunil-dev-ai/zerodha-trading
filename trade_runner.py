@@ -60,6 +60,7 @@ def main():
         return
     
     print(f"✅ Market is LIVE")
+    print(f"⏳ Remaining Time: {status['remaining_minutes']} minutes")
 
     print("\n🔄 Updating Bluechip Stock List...")
 

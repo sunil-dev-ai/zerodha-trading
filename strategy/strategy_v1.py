@@ -304,7 +304,7 @@ def track_position(symbol, qty):
 
         status = get_market_status()
 
-        if trend["signal"] == "SELL" or status["Remaining Time"] <= 5:
+        if trend["signal"] == "SELL" or status["remaining_minutes"] <= 5:
 
 
             print_header(
@@ -533,7 +533,7 @@ def run_strategy():
         status = get_market_status()
 
 
-        if status["Remaining Time"] <= 5:
+        if status["remaining_minutes"] <= 5:
 
             print(
                 "\n⏰ Market closing soon. No new trades allowed."
